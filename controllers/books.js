@@ -20,6 +20,7 @@ exports.createBook = (req, res, next) => {
     .catch(error => res.status(400).json({ error }));
 };
 
+//Consulter un livre
 exports.getOneBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
     .then(book => res.status(200).json(book))
@@ -38,7 +39,7 @@ exports.modifyBook = (req, res, next) => {
   Book.findOne({_id: req.params.id})
       .then((book) => {
           if (book.userId != req.auth.userId) {
-              res.status(401).json({ message : 'Not authorized'});
+              res.status(403).json({ message : 'Not authorized'});
           } else {
               Book.updateOne({ _id: req.params.id}, { ...bookObject, _id: req.params.id})
               .then(() => res.status(200).json({message : 'Objet modifié!'}))
@@ -95,7 +96,7 @@ exports.rateBook = (req, res, next) => {
 
         // Sauvegarder les modifications du livre
         book.save()
-          .then(() => res.status(200).json(book))
+        .then(book => res.status(200).json(book))
           .catch(error => res.status(400).json({ error }));
       } else {
         res.status(404).json({ error: 'Livre non trouvé' });
@@ -104,7 +105,7 @@ exports.rateBook = (req, res, next) => {
     .catch(error => res.status(500).json({ error }));
 };
 
-
+//Les mieux notés
 
 exports.getBestRatingBook = (req, res, next) => {
   Book.find().sort({averageRating: -1}).limit(3)
