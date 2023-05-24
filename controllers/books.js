@@ -1,6 +1,7 @@
 const Book = require('../models/book');
 const fs = require('fs');
 
+//consulter les livres
 exports.getAllBook = (req, res, next) => {
   Book.find()
     .then(books => res.status(200).json(books))
@@ -69,6 +70,11 @@ exports.deleteBook = (req, res, next) => {
 //noter un livre
 exports.rateBook = (req, res, next) => {
   const { userId, rating } = req.body;
+
+  // Vérifier si l'utilisateur est connecté
+  if (!userId) {
+    return res.status(401).json({ message: "Vous devez être connecté pour noter un livre" });
+  }
 
 // Créer un nouvel objet avec les propriétés attendues par le backend
   const ratingObj = {
