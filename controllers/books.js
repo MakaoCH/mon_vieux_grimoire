@@ -80,7 +80,6 @@ exports.rateBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
     .then(book => {
       if (book) {
-        // Vérifier si l'utilisateur a déjà noté ce livre
         const userRating = book.ratings.find(r => r.userId === userId);
         if (userRating) {
           // Mise à jour de la note existante
@@ -106,7 +105,6 @@ exports.rateBook = (req, res, next) => {
 };
 
 //Les mieux notés
-
 exports.getBestRatingBook = (req, res, next) => {
   Book.find().sort({averageRating: -1}).limit(3)
     .then((books) => res.status(200).json(books))

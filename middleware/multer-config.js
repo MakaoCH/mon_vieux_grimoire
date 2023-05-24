@@ -1,4 +1,5 @@
 const multer = require('multer');
+const sharp = require('sharp');
 
 const MIME_TYPES = {
   'image/jpg': 'jpg',
@@ -6,15 +7,39 @@ const MIME_TYPES = {
   'image/png': 'png'
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    callback(null, 'images');
-  },
-  filename: (req, file, callback) => {
-    const name = file.originalname.split(' ').join('_');
-    const extension = MIME_TYPES[file.mimetype];
-    callback(null, name + Date.now() + '.' + extension);
-  }
-});
+const storage = multer.memoryStorage();
 
-module.exports = multer({storage: storage}).single('image');
+const multerConfig = {
+  upload: multer({
+    storage: storage,
+    fileFilter: (req, file, callback) => {
+      const isValidMimeType = Object.keys(MIME_TYPES).includes(file.mimetype);
+      const isValidExtension = isValidMimeType && MIME_TYPES[file.mimetype] === file.originalname.split('.').pop().toLowerCase();
+      isValidExtension ? callback(null, true) : callback(new Error('Invalid file type.'));
+    }
+  }).single('image'),
+
+  uploadImage: (req, res, next) => {
+    if (!req.file) {
+      return next();
+    }
+
+    const { buffer } = req.file;
+    const fileName = Date.now() + '.webp';
+
+    sharp(buffer)
+      .toFormat('webp')
+      .webp({ quality: 5 })
+      .toFile('images/' + fileName)
+      .then(() => {
+        req.file.filename = fileName;
+        next();
+      })
+      .catch(error => {
+        console.error('Error occurred while converting image to WebP:', error);
+        next(error);
+      });
+  }
+};
+
+module.exports = multerConfig;
