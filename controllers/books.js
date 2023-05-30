@@ -12,8 +12,10 @@ exports.getAllBook = (req, res, next) => {
 exports.createBook = (req, res, next) => {
   const bookObject = req.body.book ? JSON.parse(req.body.book) : req.body;
   delete bookObject._id;
+  delete bookObject._userId;
   const book = new Book({
     ...bookObject,
+    userId: req.auth.userId,
     imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
   });
   book.save()
@@ -52,17 +54,20 @@ exports.modifyBook = (req, res, next) => {
       });
 };
 
-
 //Supprimer un livre
 exports.deleteBook = (req, res, next) => {
   Book.findOne({ _id: req.params.id })
     .then(book => {
-      const filename = book.imageUrl.split('/images/')[1];
-      fs.unlink(`images/${filename}`, () => {
-        Book.deleteOne({ _id: req.params.id })
-          .then(() => res.status(200).json({ message: 'Book deleted !'}))
-          .catch(error => res.status(400).json({ error }));
-      });
+      if (book.userId != req.auth.userId) {
+        res.status(401).json({message: 'Non autorisé'});
+      } else {
+        const filename = book.imageUrl.split('/images/')[1];
+        fs.unlink(`images/${filename}`, () => {
+          Book.deleteOne({ _id: req.params.id })
+            .then(() => res.status(200).json({ message: 'Livre supprimé !'}))
+            .catch(error => res.status(400).json({ error }));
+        });
+      }
     })
     .catch(error => res.status(500).json({ error }));
 };
@@ -70,18 +75,15 @@ exports.deleteBook = (req, res, next) => {
 //noter un livre
 exports.rateBook = (req, res, next) => {
   const { userId, rating } = req.body;
-
   // Vérifier si l'utilisateur est connecté
   if (!userId) {
     return res.status(401).json({ message: "Vous devez être connecté pour noter un livre" });
   }
-
 // Créer un nouvel objet avec les propriétés attendues par le backend
   const ratingObj = {
     userId,
     grade: rating,
   };
-
   // Vérifier si l'utilisateur a déjà noté ce livre
   Book.findOne({ _id: req.params.id })
     .then(book => {
@@ -94,14 +96,12 @@ exports.rateBook = (req, res, next) => {
           // Ajout d'une nouvelle note
           book.ratings.push(ratingObj);
         }
-
         // Calculer la nouvelle note moyenne
         const totalRating = book.ratings.reduce((sum, r) => sum + r.grade, 0);
         book.averageRating = totalRating / book.ratings.length;
-
         // Sauvegarder les modifications du livre
         book.save()
-        .then(book => res.status(200).json(book))
+          .then(book => res.status(200).json(book))
           .catch(error => res.status(400).json({ error }));
       } else {
         res.status(404).json({ error: 'Livre non trouvé' });
